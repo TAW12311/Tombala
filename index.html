@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🎄 Tombala (İnternetsiz) - İl + Yemek + Foto + Ses + Skor</title>
+
+<style>
+  :root{ --gold:#ffd700; }
+
+  html, body { height: 100%; }
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family: Arial, sans-serif;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* Arka plan */
+  #bg{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    z-index:0;
+    pointer-events:none;
+  }
+  .bgShade{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.6);
+    z-index:1;
+    pointer-events:none;
+  }
+
+  /* ✅ 3 kolon: Board | Info | Score */
+  .app{
+    width:min(1900px, 99vw);
+    background:rgba(0,0,0,.62);
+    border-radius:26px;
+    padding:24px;
+    display:grid;
+    grid-template-columns: 2.2fr 1fr 0.85fr;
+    gap:18px;
+    box-shadow:0 0 40px rgba(0,0,0,.55);
+    position:relative;
+    z-index:2;
+  }
+
+  /* SOL: Board */
+  .board{ display:grid; grid-template-columns: repeat(10, 1fr); gap:16px; }
+
+  .num{
+    aspect-ratio:1; border-radius:22px;
+    border:4px solid var(--gold);
+    background:linear-gradient(145deg,#b00000,#7a0000);
+    display:flex; align-items:center; justify-content:center;
+    font-size:44px; font-weight:900;
+    user-select:none; cursor:pointer; transition:.15s;
+  }
+  .num:hover{ transform:scale(1.03); }
+  .num.marked{
+    background:linear-gradient(145deg,#2ecc71,#27ae60);
+    color:#05330f; box-shadow:0 0 18px rgba(46,204,113,.85);
+  }
+
+  .actions{ margin-top:18px; display:flex; gap:12px; }
+  .btn{
+    flex:1; padding:16px 16px; border-radius:18px; border:none; cursor:pointer;
+    font-weight:900; font-size:20px; background:var(--gold);
+  }
+  .btn.win{ background:linear-gradient(145deg,#ffdd00,#ff9900); }
+
+  /* ORTA: İl/Yemek Panel */
+  .panel{
+    background:rgba(15,15,15,.88);
+    border-radius:22px;
+    padding:18px;
+    display:flex; flex-direction:column; gap:12px;
+    min-width: 340px;
+  }
+  .topline{ display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .pill{
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.08);
+    border-radius:999px;
+    padding:10px 14px; font-weight:800; font-size:15px;
+  }
+  .panel h2{ margin:0; text-align:center; color:var(--gold); font-size:30px; }
+  .sub{ text-align:center; opacity:.9; font-size:16px; margin-top:-6px; }
+
+  .soundRow{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .toggle{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    font-weight:900;
+    font-size:16px;
+  }
+  input[type="checkbox"]{ width:20px; height:20px; }
+
+  .foods{ display:flex; flex-direction:column; gap:14px; }
+  .food{
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:18px;
+    padding:12px; background:rgba(0,0,0,.22);
+  }
+  .food img{
+    width:100%; height:170px; object-fit:cover; border-radius:14px;
+    background:rgba(255,255,255,.06); display:block;
+  }
+  .food .name{ margin-top:8px; text-align:center; font-size:22px; font-weight:900; }
+  .blank{
+    opacity:.9; text-align:center; padding:18px 10px;
+    border:1px dashed rgba(255,255,255,.22); border-radius:18px;
+    font-size:18px;
+  }
+
+  /* SAĞ: Skor Paneli (tam ayrı + sticky) */
+  .scorePanel{
+    background:rgba(15,15,15,.88);
+    border-radius:22px;
+    padding:18px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    min-width: 320px;
+
+    position: sticky;
+    top: 16px;
+    height: calc(100vh - 64px);
+    max-height: 920px;
+  }
+
+  .scoreTitle{
+    text-align:center;
+    font-weight:900;
+    font-size:22px;
+    color:var(--gold);
+    margin:0;
+  }
+
+  .scoreAddRow{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .scoreInput{
+    flex:1;
+    padding:12px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-size:16px;
+    outline:none;
+  }
+  .scoreBtn{
+    padding:12px 12px;
+    border-radius:12px;
+    border:none;
+    cursor:pointer;
+    font-weight:900;
+    font-size:16px;
+    background:var(--gold);
+  }
+  .scoreBtn.danger{
+    background:#ff4d4d;
+    color:#160000;
+  }
+
+  .scoreList{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    overflow:auto;
+    padding-right: 6px;
+  }
+
+  .scoreRow{
+    display:grid;
+    grid-template-columns: 1fr auto auto auto auto;
+    gap:10px;
+    align-items:center;
+    padding:12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.22);
+  }
+  .scoreName{
+    font-weight:900;
+    font-size:16px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .scoreVal{
+    font-weight:900;
+    font-size:18px;
+    min-width:34px;
+    text-align:center;
+  }
+  .scoreMiniBtn{
+    width:46px;
+    height:40px;
+    border-radius:12px;
+    border:none;
+    cursor:pointer;
+    font-weight:900;
+    font-size:18px;
+    background:rgba(255,255,255,.14);
+    color:#fff;
+  }
+  .scoreMiniBtn.scoreDel{ background:rgba(255,80,80,.25); }
+
+  /* Mobilde kolonlar alt alta */
+  @media (max-width:1250px){
+    .app{ grid-template-columns: 1fr; }
+    .board{ grid-template-columns: repeat(5, 1fr); }
+    .num{ font-size:38px; }
+    .scorePanel{ position: relative; top:auto; height:auto; max-height:none; }
+    .scoreList{ max-height:none; }
+  }
+</style>
+</head>
+
+<body>
+  <img id="bg" src="bg_noel.png" alt="">
+  <div class="bgShade"></div>
+
+  <div class="app">
+
+    <!-- SOL -->
+    <div>
+      <div class="board" id="board"></div>
+      <div class="actions">
+        <button class="btn" id="clearMarked">İşaretleri Temizle</button>
+        <button class="btn" id="clearAll">Hepsini Sıfırla</button>
+        <button class="btn win" id="winBtn">🏆 ZAFER!</button>
+      </div>
+    </div>
+
+    <!-- ORTA -->
+    <div class="panel">
+      <div class="topline">
+        <div class="pill" id="lastPickPill">Son sayı: —</div>
+        <div class="pill">1–81: İl+Foto • 82–90: Boş</div>
+      </div>
+
+      <div class="soundRow">
+        <div class="toggle">
+          <input id="fxOn" type="checkbox" checked>
+          <label for="fxOn">Efekt</label>
+        </div>
+        <div class="toggle">
+          <input id="ttsOn" type="checkbox" checked>
+          <label for="ttsOn">Sesli okuma</label>
+        </div>
+      </div>
+
+      <h2 id="cityTitle">📍 Sayı Bekleniyor</h2>
+      <div class="sub" id="pickedInfo">Tıkla → ding + cümleli okuma 🔊</div>
+
+      <div class="foods" id="foodsWrap">
+        <div class="blank">Bir sayı seçince burada il ve yemekler görünecek.</div>
+      </div>
+    </div>
+
+    <!-- SAĞ -->
+    <aside class="scorePanel">
+      <h3 class="scoreTitle">🏆 Skor Tablosu</h3>
+
+      <div class="scoreAddRow">
+        <input id="playerName" class="scoreInput" type="text" placeholder="İsim yaz (örn: Efe)">
+        <button id="addPlayerBtn" class="scoreBtn">Ekle</button>
+        <button id="resetScoresBtn" class="scoreBtn danger">Sıfırla</button>
+      </div>
+
+      <div id="scoreList" class="scoreList"></div>
+    </aside>
+
+  </div>
+
+<script>
+/* SES */
+const ding = new Audio("ding.wav"); ding.preload="auto";
+const alkis = new Audio("alkis.wav"); alkis.preload="auto";
+
+/* TTS */
+function speakTR(text){
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "tr-TR";
+  u.rate = 1.0; u.pitch = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const trVoice = voices.find(v => (v.lang || "").toLowerCase().startsWith("tr"));
+  if (trVoice) u.voice = trVoice;
+  window.speechSynthesis.speak(u);
+}
+function numberToTr(n){
+  const ones=["sıfır","bir","iki","üç","dört","beş","altı","yedi","sekiz","dokuz"];
+  const tens=["","on","yirmi","otuz","kırk","elli","altmış","yetmiş","seksen","doksan"];
+  if(n===0) return ones[0];
+  if(n<10) return ones[n];
+  if(n<20) return n===10 ? "on" : "on " + ones[n-10];
+  return tens[Math.floor(n/10)] + (n%10 ? " " + ones[n%10] : "");
+}
+
+/* 81 İL */
+const cities = [
+  "Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın","Balıkesir",
+  "Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli",
+  "Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari",
+  "Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri","Kırklareli","Kırşehir",
+  "Kocaeli","Konya","Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin","Muğla","Muş","Nevşehir",
+  "Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Tekirdağ","Tokat",
+  "Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray","Bayburt","Karaman",
+  "Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova","Karabük","Kilis","Osmaniye","Düzce"
+];
+
+/* 3 YEMEK (FULL) */
+const foodsByCity = {
+  "Adana":["Adana kebabı","Şalgam","Bici bici"],
+  "Adıyaman":["Çiğ köfte","İçli köfte","Besni tavası"],
+  "Afyonkarahisar":["Afyon sucuğu","Kaymak","Keşkek"],
+  "Ağrı":["Abdigör köftesi","Ağrı ketesi","Ayran aşı"],
+  "Amasya":["Amasya çöreği","Bakla dolması","Toyga çorbası"],
+  "Ankara":["Ankara tava","Beypazarı güveci","Aspava"],
+  "Antalya":["Antalya piyazı","Hibeş","Serpme börek"],
+  "Artvin":["Kuymak (mıhlama)","Laz böreği","Karalahana sarması"],
+  "Aydın":["Çine köftesi","Gözleme","Keşkek"],
+  "Balıkesir":["Höşmerim","Tirit","Sura"],
+  "Bilecik":["Bıldırcın kebabı","Nohutlu mantı","Boza"],
+  "Bingöl":["Sorina pel","Löl","Mastuva"],
+  "Bitlis":["Büryan kebabı","Ayran aşı","Kete"],
+  "Bolu":["Mengen pilavı","Kabaklı gözleme","Abant kebabı"],
+  "Burdur":["Burdur şiş","Ceviz ezmesi","Tarhana çorbası"],
+  "Bursa":["İskender kebap","İnegöl köfte","Kemalpaşa tatlısı"],
+  "Çanakkale":["Peynir helvası","Oğlak çevirme","Sardalya"],
+  "Çankırı":["Yaren güveci","Tuzlu yoğurt","Kızılcık tarhanası"],
+  "Çorum":["İskilip dolması","Leblebi","Madımak"],
+  "Denizli":["Denizli kebabı","Tandır","Leblebi helvası"],
+  "Diyarbakır":["Ciğer kebabı","Meftune","Burma kadayıf"],
+  "Edirne":["Tava ciğer","Badem ezmesi","Kavala kurabiyesi"],
+  "Elazığ":["Harput köftesi","Gömme","Orcik"],
+  "Erzincan":["Tulum peyniri","Kesme çorba","Yaprak döner"],
+  "Erzurum":["Cağ kebabı","Kadayıf dolması","Ayran aşı"],
+  "Eskişehir":["Çibörek","Balaban köfte","Met helvası"],
+  "Gaziantep":["Beyran","Ali nazik","Baklava"],
+  "Giresun":["Karalahana çorbası","Giresun pidesi","Fındıklı tatlılar"],
+  "Gümüşhane":["Pestil","Köme","Siron"],
+  "Hakkari":["Doğaba","Keledoş","Tandır ekmeği"],
+  "Hatay":["Künefe","Tepsi kebabı","Humus"],
+  "Isparta":["Gül lokumu","Kabune pilavı","Keşkek"],
+  "Mersin":["Tantuni","Cezerye","Kerebiç"],
+  "İstanbul":["Balık ekmek","Islak hamburger","Sultanahmet köfte"],
+  "İzmir":["Boyoz","Kumru","Midye dolma"],
+  "Kars":["Kars kazı","Gravyer peyniri","Hangel"],
+  "Kastamonu":["Etli ekmek","Banduma","Çekme helva"],
+  "Kayseri":["Mantı","Pastırma","Sucuk"],
+  "Kırklareli":["Papara","Hardaliye","Kırklareli köftesi"],
+  "Kırşehir":["Kesme aşı","Tandır","Çullama"],
+  "Kocaeli":["Pişmaniye","Cızlama","Kandıra yoğurdu"],
+  "Konya":["Etli ekmek","Fırın kebabı","Bamya çorbası"],
+  "Kütahya":["Cimcik","Tirit","Haşhaşlı gözleme"],
+  "Malatya":["Kayısı tatlıları","Analı kızlı","Kağıt kebabı"],
+  "Manisa":["Manisa kebabı","Mesir macunu","Simit kebabı"],
+  "Kahramanmaraş":["Maraş dondurması","Tarhana","İçli köfte"],
+  "Mardin":["Kaburga dolması","İkbebet","Harire"],
+  "Muğla":["Çökertme kebabı","Keşkek","Sündürme"],
+  "Muş":["Keledoş","Muş köftesi","Herle çorbası"],
+  "Nevşehir":["Testi kebabı","Dolaz","Düğü çorbası"],
+  "Niğde":["Niğde tahinlisi","Tirit","Kömbe"],
+  "Ordu":["Pancar çorbası","Mısır ekmeği","Hamsili pilav"],
+  "Rize":["Rize kavurması","Muhlama","Laz böreği"],
+  "Sakarya":["Islama köfte","Kabak tatlısı","Uğut tatlısı"],
+  "Samsun":["Bafra pidesi","Çakallı menemeni","Kaz tiridi"],
+  "Siirt":["Büryan","Perde pilavı","Zivzik narı tatlıları"],
+  "Sinop":["Sinop mantısı","Nokul","Kestane balı tatlıları"],
+  "Sivas":["Sivas köftesi","Madımak","Hingel"],
+  "Tekirdağ":["Tekirdağ köftesi","Hayrabolu tatlısı","Peynir helvası"],
+  "Tokat":["Tokat kebabı","Bat","Zile pekmezi"],
+  "Trabzon":["Kuymak","Hamsi tava","Akçaabat köfte"],
+  "Tunceli":["Gulik (ışkın)","Döğmeç","Kavut"],
+  "Şanlıurfa":["Çiğ köfte","Urfa kebabı","Lahmacun"],
+  "Uşak":["Tarhana çorbası","Keşkek","Cendere tatlısı"],
+  "Van":["Van kahvaltısı","Keledoş","Otlu peynir"],
+  "Yozgat":["Testi kebabı","Arabaşı","Sürmeli pilav"],
+  "Zonguldak":["Ereğli pidesi","Uğmaç çorbası","Mancar sarması"],
+  "Aksaray":["Aksaray tava","Soğanlama","Bamya çorbası"],
+  "Bayburt":["Lor dolması","Galacoş","Herse"],
+  "Karaman":["Calla","Arabaşı","Batırık"],
+  "Kırıkkale":["Keskin tava","Katmer","Tarhana"],
+  "Batman":["İçli köfte","Perde pilavı","Kaburga dolması"],
+  "Şırnak":["Kutlık","Serbidev","Mumbar dolması"],
+  "Bartın":["Kömeç","Tatlı börek","Pirinçli mantı"],
+  "Ardahan":["Kaz eti","Hangel","Erişte"],
+  "Iğdır":["Bozbaş","Taş köfte","Katmer"],
+  "Yalova":["Yalova sütlüsü","Köy böreği","Kestane şekeri"],
+  "Karabük":["Safranbolu lokumu","Bükme","Peruhi"],
+  "Kilis":["Kilis tava","Oruk","Cennet çamuru"],
+  "Osmaniye":["Fıstıklı tatlılar","Kömbecik","Etli sarma"],
+  "Düzce":["Düzce köftesi","Melengücceği tatlısı","Mısır ekmeği"]
+};
+
+/* İstanbul/İzmir fix: İ -> i̇ sorununu normalize ile temizle */
+function slugCity(city){
+  return city
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function renderBlank(msg){
+  document.getElementById("cityTitle").textContent = "📍 —";
+  document.getElementById("pickedInfo").textContent = msg || "82–90: Panel boş.";
+  document.getElementById("foodsWrap").innerHTML =
+    `<div class="blank">82–90 arası sayılar için panel boş ✅</div>`;
+}
+
+function renderCity(city, pickedNumber){
+  document.getElementById("cityTitle").textContent = "📍 " + city;
+  document.getElementById("pickedInfo").textContent = `Seçilen sayı: ${pickedNumber} • İl: ${city}`;
+
+  const dishes = foodsByCity[city] || ["Yemek 1","Yemek 2","Yemek 3"];
+  const s = slugCity(city);
+  const wrap = document.getElementById("foodsWrap");
+  wrap.innerHTML = "";
+
+  for(let i=0;i<3;i++){
+    const dish = dishes[i];
+    const card = document.createElement("div");
+    card.className = "food";
+
+    const img = document.createElement("img");
+    img.alt = dish;
+    img.src = `imgs/${s}0${i+1}.png`;  // imgs/istanbul01.png gibi
+    img.onerror = () => { img.style.display="none"; };
+
+    const name = document.createElement("div");
+    name.className="name";
+    name.textContent = dish;
+
+    card.appendChild(img);
+    card.appendChild(name);
+    wrap.appendChild(card);
+  }
+}
+
+/* Board */
+const board = document.getElementById("board");
+for(let i=1;i<=90;i++){
+  const d=document.createElement("div");
+  d.className="num";
+  d.textContent=i;
+  d.onclick=()=>onPick(d,i);
+  board.appendChild(d);
+}
+
+document.getElementById("clearMarked").onclick=()=>{
+  document.querySelectorAll(".num.marked").forEach(x=>x.classList.remove("marked"));
+};
+
+document.getElementById("clearAll").onclick=()=>{
+  document.querySelectorAll(".num").forEach(x=>x.classList.remove("marked"));
+  document.getElementById("lastPickPill").textContent = "Son sayı: —";
+  renderBlank("Hepsi sıfırlandı.");
+};
+
+const fxOn = document.getElementById("fxOn");
+const ttsOn = document.getElementById("ttsOn");
+
+function playDing(){
+  if(!fxOn.checked) return;
+  try{ ding.currentTime=0; ding.play(); }catch{}
+}
+function speakNumber(n){
+  if(!ttsOn.checked) return;
+  const tr = numberToTr(n);
+  const phrases = [`Sayı ${tr}!`, `${tr} numara!`, `${tr} geldi!`, `Çekilen sayı ${tr}!`];
+  speakTR(phrases[Math.floor(Math.random()*phrases.length)]);
+}
+
+function onPick(div, n){
+  div.classList.toggle("marked");
+  document.getElementById("lastPickPill").textContent = "Son sayı: " + n;
+
+  playDing();
+  speakNumber(n);
+
+  if(n>81){ renderBlank("82–90 seçildi: Panel boş."); return; }
+  renderCity(cities[n-1], n);
+}
+
+/* Zafer */
+document.getElementById("winBtn").onclick = ()=>{
+  try{ alkis.currentTime=0; alkis.play(); }catch{}
+  speakTR("Tombala! Tebrikler!");
+  document.getElementById("cityTitle").textContent = "🎉 KAZANILDI!";
+  document.getElementById("pickedInfo").textContent = "Mutlu yıllar!";
+};
+
+/* Skor (kalıcı) */
+const LS_KEY = "tombala_scores_v1";
+function loadScores(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }catch{ return []; } }
+function saveScores(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
+
+let scores = loadScores();
+
+const scoreList = document.getElementById("scoreList");
+const playerName = document.getElementById("playerName");
+const addPlayerBtn = document.getElementById("addPlayerBtn");
+const resetScoresBtn = document.getElementById("resetScoresBtn");
+
+function renderScores(){
+  scoreList.innerHTML = "";
+  if(scores.length === 0){
+    scoreList.innerHTML = `<div class="blank">Henüz oyuncu yok. İsim yazıp “Ekle” de ✅</div>`;
+    return;
+  }
+  scores
+    .slice()
+    .sort((a,b)=> b.wins - a.wins || a.name.localeCompare(b.name))
+    .forEach((p)=>{
+      const row = document.createElement("div");
+      row.className = "scoreRow";
+      row.innerHTML = `
+        <div class="scoreName">${p.name}</div>
+        <button class="scoreMiniBtn" title="+1">+</button>
+        <div class="scoreVal">${p.wins}</div>
+        <button class="scoreMiniBtn" title="-1">−</button>
+        <button class="scoreMiniBtn scoreDel" title="Sil">✕</button>
+      `;
+      row.children[1].onclick = ()=>{ p.wins += 1; saveScores(scores); renderScores(); };
+      row.children[3].onclick = ()=>{ p.wins = Math.max(0, p.wins - 1); saveScores(scores); renderScores(); };
+      row.children[4].onclick = ()=>{ scores = scores.filter(x => x !== p); saveScores(scores); renderScores(); };
+      scoreList.appendChild(row);
+    });
+}
+
+function addPlayer(){
+  const name = (playerName.value || "").trim();
+  if(!name) return;
+  const exists = scores.some(p => p.name.toLowerCase() === name.toLowerCase());
+  if(!exists){ scores.push({ name, wins: 0 }); saveScores(scores); }
+  playerName.value = "";
+  renderScores();
+}
+
+addPlayerBtn.onclick = addPlayer;
+playerName.addEventListener("keydown", (e)=>{ if(e.key === "Enter") addPlayer(); });
+
+resetScoresBtn.onclick = ()=>{ scores = []; saveScores(scores); renderScores(); };
+
+renderScores();
+</script>
+</body>
+</html>
